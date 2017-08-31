@@ -18,10 +18,17 @@ def search_all_page_url():
     if r.status_code == 200:
         time.sleep(2)
         bs = BeautifulSoup(r.text, 'html5lib')
+        # print "conet:", bs
         urlList = bs.select("#topList .taptap-top-card")
         # print urlList[0]
         for i in urlList:
             detailList.append(i.select(".card-left-image")[0].get("href"))
+        # if "none" in bs.select(".taptap-button-more button")[0].get("style"):
+        # print "adwadwa:", bs.select(".col-sm-12 .taptap-button-more")
+        if bs.select(".col-sm-12 .taptap-button-more button"):
+            url2 = bs.select(".col-sm-12 .taptap-button-more button")[0].get("data-url")
+            # more_content(url2)
+            detailList.extend(more_content(url2))
     else:
         print "页面信息获取失败"
     return detailList
@@ -32,6 +39,7 @@ def devide_url():
         search_content(i)
 
 def search_content(url):
+    print "awdada:", url
     r = requests.get(url)
     if r.status_code == 200:
         # time.sleep(2)
@@ -46,21 +54,25 @@ def search_content(url):
         for i in bs.select(".info-item-content"):
             if(i.get("itemprop") ==  "datePublished"):
                 gameObj["refresh_time"] = i.text    #游戏更新时间
-        # single_data_save_mysql(gameObj)
-        # if "none" in bs.select(".taptap-button-more button")[0].get("style"):
-        print "adwadwa:", bs.select("#page-top .taptap-button-more")
-        # url2 = bs.select(".taptap-button-more .btn-primary")[0].get("data-url")
-        # more_content(url2)
+        single_data_save_mysql(gameObj)
         print "游戏相关信息如下：", gameObj
 
-def more_content(url):
-    r = requests.get(url)
+def more_content(url2):
+    print "awdad:", url2
+    urls = []
+    r = requests.get(url2)
     if r.status_code == 200:
         # time.sleep(2)
-        bs = BeautifulSoup(r.text, 'html5lib')
-        print "异步请求：", bs
-        gameObj = {}
-        gameObj["game_id"] = bs.select(".taptap-button-download")[0].get("data-app-id") #游戏id
+        msgData = json.JSONDecoder().decode(r.text)
+        print msgData
+        if(msgData["data"]["next"]):
+            more_content(msgData["data"]["next"])
+        if(msgData["data"]["html"]):
+            bs = BeautifulSoup(msgData["data"]["html"], 'html5lib')
+            urlList = bs.select(".taptap-top-card")
+            for i in urlList:
+                urls.append(i.select(".card-left-image")[0].get("href"))
+    return urls
 
 
 def single_data_save_mysql(dataObj):
